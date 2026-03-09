@@ -1,0 +1,1023 @@
+{
+  "version": "1.2",
+  "source_dxf": "test_diagram.dxf",
+  "source_svg": null,
+  "generated_at": "2026-03-09T20:59:05.479840+00:00",
+  "layer_priority": [
+    "TAGS",
+    "EQUIP",
+    "ANNO",
+    "TEXT"
+  ],
+  "cluster_radius": 50.0,
+  "dxf_extents": null,
+  "labels": {
+    "FV101": {
+      "text": "FV101",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "35",
+        "type": "TEXT",
+        "insert": [
+          100.0,
+          108.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "FV102": {
+      "text": "FV102",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "37",
+        "type": "TEXT",
+        "insert": [
+          200.0,
+          108.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "FV103": {
+      "text": "FV103",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "39",
+        "type": "TEXT",
+        "insert": [
+          300.0,
+          108.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "HV201": {
+      "text": "HV201",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "3B",
+        "type": "TEXT",
+        "insert": [
+          100.0,
+          208.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "HV202": {
+      "text": "HV202",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "3D",
+        "type": "TEXT",
+        "insert": [
+          200.0,
+          208.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "HV203": {
+      "text": "HV203",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "3F",
+        "type": "TEXT",
+        "insert": [
+          300.0,
+          208.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "EV301": {
+      "text": "EV301",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "41",
+        "type": "TEXT",
+        "insert": [
+          100.0,
+          308.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "EV302": {
+      "text": "EV302",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "43",
+        "type": "TEXT",
+        "insert": [
+          200.0,
+          308.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "EV303": {
+      "text": "EV303",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "45",
+        "type": "TEXT",
+        "insert": [
+          300.0,
+          308.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "CV401": {
+      "text": "CV401",
+      "found": true,
+      "duplicate": false,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "47",
+        "type": "TEXT",
+        "insert": [
+          400.0,
+          108.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "DV001": {
+      "text": "DV001",
+      "found": true,
+      "duplicate": true,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "68",
+        "type": "TEXT",
+        "insert": [
+          500.0,
+          408.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "ANNO",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": [
+        {
+          "handle": "67",
+          "layer": "TEXT-ALL",
+          "insert": [
+            100.0,
+            408.0
+          ]
+        },
+        {
+          "handle": "68",
+          "layer": "ANNO",
+          "insert": [
+            500.0,
+            408.0
+          ]
+        }
+      ]
+    },
+    "DV002": {
+      "text": "DV002",
+      "found": true,
+      "duplicate": true,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "6B",
+        "type": "TEXT",
+        "insert": [
+          600.0,
+          408.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "ANNO",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": [
+        {
+          "handle": "6A",
+          "layer": "TEXT-ALL",
+          "insert": [
+            200.0,
+            408.0
+          ]
+        },
+        {
+          "handle": "6B",
+          "layer": "ANNO",
+          "insert": [
+            600.0,
+            408.0
+          ]
+        }
+      ]
+    },
+    "DV003": {
+      "text": "DV003",
+      "found": true,
+      "duplicate": true,
+      "match_type": "exact",
+      "dxf": {
+        "handle": "6E",
+        "type": "TEXT",
+        "insert": [
+          700.0,
+          408.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "ANNO",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": [
+        {
+          "handle": "6D",
+          "layer": "TEXT-ALL",
+          "insert": [
+            300.0,
+            408.0
+          ]
+        },
+        {
+          "handle": "6E",
+          "layer": "ANNO",
+          "insert": [
+            700.0,
+            408.0
+          ]
+        }
+      ]
+    },
+    "XX999": {
+      "text": "XX999",
+      "found": false,
+      "duplicate": false,
+      "match_type": "none",
+      "dxf": null,
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "YY888": {
+      "text": "YY888",
+      "found": false,
+      "duplicate": false,
+      "match_type": "none",
+      "dxf": null,
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "ZZ777": {
+      "text": "ZZ777",
+      "found": false,
+      "duplicate": false,
+      "match_type": "none",
+      "dxf": null,
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "AA001": {
+      "text": "AA001",
+      "found": false,
+      "duplicate": false,
+      "match_type": "none",
+      "dxf": null,
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "BB002": {
+      "text": "BB002",
+      "found": false,
+      "duplicate": false,
+      "match_type": "none",
+      "dxf": null,
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "FV111": {
+      "text": "FV111",
+      "found": true,
+      "duplicate": false,
+      "match_type": "fuzzy",
+      "dxf": {
+        "handle": "77",
+        "type": "TEXT",
+        "insert": [
+          900.0,
+          108.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    },
+    "HV211": {
+      "text": "HV211",
+      "found": true,
+      "duplicate": false,
+      "match_type": "fuzzy",
+      "dxf": {
+        "handle": "79",
+        "type": "TEXT",
+        "insert": [
+          900.0,
+          208.0
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "meta": {},
+      "all_dxf_matches": []
+    }
+  },
+  "potential_matches": {
+    "FV501": {
+      "text": "FV501",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "FV 501",
+        "centroid": [
+          501.0577,
+          106.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "49",
+            "text": "FV",
+            "insert": [
+              500.5577,
+              108.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "4A",
+            "text": "501",
+            "insert": [
+              501.5577,
+              105.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "49",
+        "type": "TEXT",
+        "insert": [
+          501.0577,
+          106.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "FV502": {
+      "text": "FV502",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "FV 502",
+        "centroid": [
+          598.6,
+          106.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "4C",
+            "text": "FV",
+            "insert": [
+              598.1,
+              108.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "4D",
+            "text": "502",
+            "insert": [
+              599.1,
+              105.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "4C",
+        "type": "TEXT",
+        "insert": [
+          598.6,
+          106.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "HV601": {
+      "text": "HV601",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "HV 601",
+        "centroid": [
+          499.6001,
+          206.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "4F",
+            "text": "HV",
+            "insert": [
+              499.1001,
+              208.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "50",
+            "text": "601",
+            "insert": [
+              500.1001,
+              205.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "4F",
+        "type": "TEXT",
+        "insert": [
+          499.6001,
+          206.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "HV602": {
+      "text": "HV602",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "HV 602",
+        "centroid": [
+          599.3928,
+          206.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "52",
+            "text": "HV",
+            "insert": [
+              598.8928,
+              208.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "53",
+            "text": "602",
+            "insert": [
+              599.8928,
+              205.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "52",
+        "type": "TEXT",
+        "insert": [
+          599.3928,
+          206.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "EV701": {
+      "text": "EV701",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "EV 701",
+        "centroid": [
+          501.4459,
+          306.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "55",
+            "text": "EV",
+            "insert": [
+              500.9459,
+              308.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "56",
+            "text": "701",
+            "insert": [
+              501.9459,
+              305.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "55",
+        "type": "TEXT",
+        "insert": [
+          501.4459,
+          306.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "EV702": {
+      "text": "EV702",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "EV 702",
+        "centroid": [
+          601.2068,
+          306.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "58",
+            "text": "EV",
+            "insert": [
+              600.7068,
+              308.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "59",
+            "text": "702",
+            "insert": [
+              601.7068,
+              305.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "58",
+        "type": "TEXT",
+        "insert": [
+          601.2068,
+          306.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "PSV801": {
+      "text": "PSV801",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "PSV 801",
+        "centroid": [
+          702.0687,
+          106.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "5B",
+            "text": "PSV",
+            "insert": [
+              701.5687,
+              108.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "5C",
+            "text": "801",
+            "insert": [
+              702.5687,
+              105.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "5B",
+        "type": "TEXT",
+        "insert": [
+          702.0687,
+          106.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "PSV802": {
+      "text": "PSV802",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "PSV 802",
+        "centroid": [
+          798.8478,
+          106.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "5E",
+            "text": "PSV",
+            "insert": [
+              798.3478,
+              108.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "5F",
+            "text": "802",
+            "insert": [
+              799.3478,
+              105.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "5E",
+        "type": "TEXT",
+        "insert": [
+          798.8478,
+          106.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "TCV901": {
+      "text": "TCV901",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "TCV 901",
+        "centroid": [
+          700.1877,
+          206.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "61",
+            "text": "TCV",
+            "insert": [
+              699.6877,
+              208.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "62",
+            "text": "901",
+            "insert": [
+              700.6877,
+              205.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "61",
+        "type": "TEXT",
+        "insert": [
+          700.1877,
+          206.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    },
+    "TCV902": {
+      "text": "TCV902",
+      "found": true,
+      "duplicate": false,
+      "match_type": "proximity_cluster",
+      "needs_review": true,
+      "cluster": {
+        "combined_text": "TCV 902",
+        "centroid": [
+          798.6192,
+          206.5
+        ],
+        "layer": "TEXT-ALL",
+        "fragment_count": 2,
+        "fragments": [
+          {
+            "handle": "64",
+            "text": "TCV",
+            "insert": [
+              798.1192,
+              208.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          },
+          {
+            "handle": "65",
+            "text": "902",
+            "insert": [
+              799.1192,
+              205.0
+            ],
+            "layer": "TEXT-ALL",
+            "type": "TEXT"
+          }
+        ]
+      },
+      "dxf": {
+        "handle": "64",
+        "type": "TEXT",
+        "insert": [
+          798.6192,
+          206.5
+        ],
+        "rotation": 0.0,
+        "height": 2.5,
+        "layer": "TEXT-ALL",
+        "style": "Standard",
+        "halign": 0,
+        "valign": 0
+      },
+      "svg": null,
+      "all_dxf_matches": [],
+      "meta": {}
+    }
+  },
+  "stats": {
+    "total_searched": 30,
+    "exact_matches": 13,
+    "fuzzy_matches": 2,
+    "proximity_cluster_matches": 10,
+    "not_found": 5,
+    "duplicate_matches": 3,
+    "missing_svg_bbox": 25
+  }
+}
