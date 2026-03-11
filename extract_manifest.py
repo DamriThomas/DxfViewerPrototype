@@ -6,27 +6,27 @@ Includes full coordinate transform chain: DXF → SVG → PNG → Leaflet CRS.Si
 
 Usage:
     # SVG-only (no PNG yet) — produces manifest + debug SVG:
-    python extract_manifest.py \
-        --dxf drawing.dxf \
-        --labels labels.txt \
-        --svg drawing.svg \
-        --transform transform.json \
-        --out label-manifest.json \
+    python extract_manifest.py \\
+        --dxf drawing.dxf \\
+        --labels labels.txt \\
+        --svg drawing.svg \\
+        --transform transform.json \\
+        --out label-manifest.json \\
         --debug-svg debug_labels.svg
 
     # With PNG (full Leaflet coords):
-    python extract_manifest.py \
-        --dxf drawing.dxf \
-        --labels labels.txt \
-        --svg drawing.svg \
-        --transform transform.json \
-        --out label-manifest.json \
+    python extract_manifest.py \\
+        --dxf drawing.dxf \\
+        --labels labels.txt \\
+        --svg drawing.svg \\
+        --transform transform.json \\
+        --out label-manifest.json \\
         --debug-svg debug_labels.svg
 
     # Inline labels:
-    python extract_manifest.py \
-        --dxf drawing.dxf \
-        --labels-inline DV001 EV301 HV201 \
+    python extract_manifest.py \\
+        --dxf drawing.dxf \\
+        --labels-inline DV001 EV301 HV201 \\
         --transform transform.json
 
 Requirements:
@@ -108,17 +108,20 @@ def _parse_text(e) -> dict | None:
         style    = getattr(e.dxf, "style", "STANDARD") or "STANDARD"
         halign   = getattr(e.dxf, "halign", 0)
         valign   = getattr(e.dxf, "valign", 0)
+        # width_factor: scales glyph widths (default 1.0)
+        width_factor = getattr(e.dxf, "width", 1.0) or 1.0
         return {
-            "handle":   e.dxf.handle,
-            "type":     "TEXT",
-            "text":     text,
-            "layer":    layer,
-            "insert":   [round(insert.x, 4), round(insert.y, 4)],
-            "rotation": round(rotation, 4),
-            "height":   round(height, 4),
-            "style":    style,
-            "halign":   halign,
-            "valign":   valign,
+            "handle":       e.dxf.handle,
+            "type":         "TEXT",
+            "text":         text,
+            "layer":        layer,
+            "insert":       [round(insert.x, 4), round(insert.y, 4)],
+            "rotation":     round(rotation, 4),
+            "height":       round(height, 4),
+            "style":        style,
+            "halign":       halign,
+            "valign":       valign,
+            "width_factor": round(width_factor, 4),
         }
     except Exception:
         return None
@@ -133,24 +136,234 @@ def _parse_mtext(e) -> dict | None:
         rotation = math.degrees(getattr(e.dxf, "rotation", 0.0) or 0.0)
         height   = getattr(e.dxf, "char_height", 0.0) or 0.0
         layer    = getattr(e.dxf, "layer", "0") or "0"
+        # MTEXT attachment_point encodes halign/valign (1-9 grid)
+        attach   = getattr(e.dxf, "attachment_point", 1) or 1
+        # MTEXT reference_column_width constrains line wrapping
+        col_width = getattr(e.dxf, "width", 0.0) or 0.0
         return {
-            "handle":   e.dxf.handle,
-            "type":     "MTEXT",
-            "text":     raw_text,
-            "layer":    layer,
-            "insert":   [round(insert.x, 4), round(insert.y, 4)],
-            "rotation": round(rotation, 4),
-            "height":   round(height, 4),
-            "style":    None,
-            "halign":   None,
-            "valign":   None,
+            "handle":        e.dxf.handle,
+            "type":          "MTEXT",
+            "text":          raw_text,
+            "layer":         layer,
+            "insert":        [round(insert.x, 4), round(insert.y, 4)],
+            "rotation":      round(rotation, 4),
+            "height":        round(height, 4),
+            "style":         None,
+            "halign":        None,
+            "valign":        None,
+            "width_factor":  1.0,
+            "attach":        attach,
+            "col_width":     round(col_width, 4),
         }
     except Exception:
         return None
 
 
 # ──────────────────────────────────────────────
-# 2.  SVG TEXT EXTRACTION  (optional)
+# 2.  TIGHT HITBOX IN DXF SPACE
+#
+#  DXF TEXT halign codes:
+#    0=Left  1=Center  2=Right  3=Aligned  4=Middle  5=Fit
+#  DXF TEXT valign codes:
+#    0=Baseline  1=Bottom  2=Middle  3=Top
+#
+#  MTEXT attachment_point (1-9):
+#    1=TL 2=TC 3=TR  4=ML 5=MC 6=MR  7=BL 8=BC 9=BR
+#
+#  Glyph width estimation:
+#    Most DXF fonts use ~0.6 × height per character as advance width.
+#    SHX condensed styles narrow this; width_factor further scales it.
+#    We add a small pad (5 % each side) so the box is never clipped.
+# ──────────────────────────────────────────────
+
+# Per-glyph advance-width as a fraction of cap-height.
+# Values are normalised so capital 'H' ≈ 0.68.
+# Narrow glyphs (I, 1, f, i, l, j, r, t) are explicitly narrower;
+# wide glyphs (M, W, m, w) are wider.  Everything else falls back to
+# the style default.
+_GLYPH_WIDTH: dict[str, float] = {
+    # Very narrow
+    "I": 0.34, "i": 0.32, "l": 0.32, "1": 0.46, "!": 0.34,
+    "|": 0.30, "j": 0.34, ":": 0.34, ";": 0.34, ".": 0.34,
+    ",": 0.34, "'": 0.32, "`": 0.32, " ": 0.38,
+    # Narrow
+    "f": 0.50, "r": 0.52, "t": 0.54, "J": 0.54,
+    # Slightly narrow
+    "s": 0.62, "S": 0.68, "c": 0.64, "e": 0.64, "a": 0.66,
+    "z": 0.62, "x": 0.64, "k": 0.66, "v": 0.64, "y": 0.64,
+    "C": 0.74, "E": 0.68, "F": 0.66, "L": 0.66, "P": 0.70,
+    "Z": 0.70, "K": 0.74, "X": 0.74, "Y": 0.72, "V": 0.74,
+    # Normal
+    "A": 0.78, "B": 0.76, "D": 0.80, "G": 0.80, "H": 0.80,
+    "N": 0.80, "O": 0.82, "Q": 0.82, "R": 0.76, "T": 0.72,
+    "U": 0.78, "b": 0.70, "d": 0.70, "g": 0.70, "h": 0.70,
+    "n": 0.70, "o": 0.70, "p": 0.70, "q": 0.70, "u": 0.70,
+    "0": 0.74, "2": 0.70, "3": 0.70, "4": 0.72, "5": 0.70,
+    "6": 0.72, "7": 0.66, "8": 0.74, "9": 0.72,
+    # Wide
+    "m": 0.96, "w": 0.92, "M": 0.92, "W": 0.98,
+    # Symbols
+    "-": 0.50, "_": 0.70, "/": 0.54, "\\": 0.54,
+    "(": 0.46, ")": 0.46, "[": 0.46, "]": 0.46,
+    "&": 0.84, "@": 1.00, "#": 0.82, "%": 0.84,
+    "+": 0.78, "=": 0.78, "<": 0.74, ">": 0.74,
+}
+_DEFAULT_GLYPH_WIDTH = 0.74   # fallback for unmapped chars
+
+_STYLE_SCALE: dict[str, float] = {
+    "STANDARD":        1.00,
+    "ROMANS":          0.96,
+    "ROMANC":          1.04,
+    "ROMAND":          1.04,
+    "ROMANT":          1.08,
+    "ITALICC":         1.00,
+    "SCRIPT":          0.98,
+    "SIMPLEX":         0.96,
+    "MONOTXT":         1.00,
+    "ARIAL":           1.00,
+    "ARIAL NARROW":    0.82,
+    "TIMES NEW ROMAN": 0.96,
+}
+_DEFAULT_STYLE_SCALE = 1.00
+
+_PAD_FACTOR = 0.12   # 12 % of height on each side
+
+
+def _estimate_text_width(text: str, style: str | None, height: float,
+                         width_factor: float) -> float:
+    """Return estimated advance width in DXF units for the given text string."""
+    scale = _STYLE_SCALE.get((style or "").upper(), _DEFAULT_STYLE_SCALE)
+    raw = sum(_GLYPH_WIDTH.get(ch, _DEFAULT_GLYPH_WIDTH) for ch in text)
+    return raw * height * scale * width_factor
+
+
+def compute_dxf_bbox(entity: dict) -> dict | None:
+    """
+    Return a tight axis-aligned bounding box for the entity in DXF space.
+
+    Returns:
+        {
+          "x": left edge,
+          "y": bottom edge,
+          "width": ...,
+          "height": ...,
+          "cx": centre x,
+          "cy": centre y,
+          "rotation": degrees (for rendering a rotated rect),
+          # corners of the oriented bounding box (pre-rotation → then rotated)
+          "corners": [[x0,y0],[x1,y1],[x2,y2],[x3,y3]],
+        }
+    All values in DXF units.  Returns None when height==0.
+    """
+    h = entity.get("height", 0.0) or 0.0
+    if h == 0.0:
+        return None
+
+    text     = entity.get("text", "") or " "
+    style    = entity.get("style")
+    wf       = entity.get("width_factor", 1.0) or 1.0
+    rotation = entity.get("rotation", 0.0) or 0.0
+
+    raw_w = _estimate_text_width(text, style, h, wf)
+    pad   = h * _PAD_FACTOR
+
+    # ── Unrotated bbox extents relative to the alignment point ──────────
+    # We compute (local_x_min, local_y_min, local_x_max, local_y_max)
+    # where local coords have the text baseline running along +X.
+
+    halign = entity.get("halign") or 0
+    valign = entity.get("valign") or 0
+    etype  = entity.get("type", "TEXT")
+
+    if etype == "MTEXT":
+        # attachment_point: 1=TL,2=TC,3=TR, 4=ML,5=MC,6=MR, 7=BL,8=BC,9=BR
+        attach  = entity.get("attach", 1) or 1
+        h_code  = (attach - 1) % 3      # 0=Left, 1=Center, 2=Right
+        v_code  = (attach - 1) // 3     # 0=Top,  1=Middle, 2=Bottom
+        col_w   = entity.get("col_width", 0.0) or 0.0
+        if col_w > 0:
+            raw_w = col_w
+        # local X offset
+        if h_code == 0:       # Left
+            lx_min, lx_max = 0,          raw_w
+        elif h_code == 1:     # Center
+            lx_min, lx_max = -raw_w/2,  raw_w/2
+        else:                 # Right
+            lx_min, lx_max = -raw_w,    0
+        # local Y offset (MTEXT Y-down attachment)
+        # v_code 0=Top means insert is at the top
+        if v_code == 0:       # Top
+            ly_min, ly_max = -h, 0
+        elif v_code == 1:     # Middle
+            ly_min, ly_max = -h/2, h/2
+        else:                 # Bottom
+            ly_min, ly_max = 0, h
+    else:
+        # TEXT halign
+        if halign in (0, 3, 5):   # Left / Aligned / Fit
+            lx_min, lx_max = 0, raw_w
+        elif halign == 1:          # Center
+            lx_min, lx_max = -raw_w/2, raw_w/2
+        elif halign == 2:          # Right
+            lx_min, lx_max = -raw_w, 0
+        elif halign == 4:          # Middle (centred on both axes)
+            lx_min, lx_max = -raw_w/2, raw_w/2
+        else:
+            lx_min, lx_max = 0, raw_w
+
+        # TEXT valign (DXF Y-up)
+        if valign == 0:            # Baseline
+            ly_min, ly_max = -h * 0.2, h          # descenders ≈ 20 % below baseline
+        elif valign == 1:          # Bottom
+            ly_min, ly_max = 0, h
+        elif valign == 2:          # Middle
+            ly_min, ly_max = -h/2, h/2
+        elif valign == 3:          # Top
+            ly_min, ly_max = -h, 0
+        else:
+            ly_min, ly_max = -h * 0.2, h
+
+    # Apply padding
+    lx_min -= pad;  lx_max += pad
+    ly_min -= pad;  ly_max += pad
+
+    # ── Rotate the four corners around the insert point ─────────────────
+    theta = math.radians(rotation)
+    cos_t, sin_t = math.cos(theta), math.sin(theta)
+    ix, iy = entity["insert"]
+
+    def rotate(lx, ly):
+        rx = ix + lx * cos_t - ly * sin_t
+        ry = iy + lx * sin_t + ly * cos_t
+        return [round(rx, 4), round(ry, 4)]
+
+    corners = [
+        rotate(lx_min, ly_min),
+        rotate(lx_max, ly_min),
+        rotate(lx_max, ly_max),
+        rotate(lx_min, ly_max),
+    ]
+
+    # Axis-aligned envelope of the rotated corners
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    ax_min, ax_max = min(xs), max(xs)
+    ay_min, ay_max = min(ys), max(ys)
+
+    return {
+        "x":        round(ax_min, 4),
+        "y":        round(ay_min, 4),
+        "width":    round(ax_max - ax_min, 4),
+        "height":   round(ay_max - ay_min, 4),
+        "cx":       round((ax_min + ax_max) / 2, 4),
+        "cy":       round((ay_min + ay_max) / 2, 4),
+        "rotation": round(rotation, 4),
+        "corners":  corners,
+    }
+
+
+# ──────────────────────────────────────────────
+# 3.  SVG TEXT EXTRACTION  (optional)
 # ──────────────────────────────────────────────
 
 def extract_svg_text_bboxes(svg_path: str) -> list[dict]:
@@ -228,7 +441,7 @@ def _inherit_transform(el):
 
 
 # ──────────────────────────────────────────────
-# 3.  COORDINATE TRANSFORMS
+# 4.  COORDINATE TRANSFORMS
 #
 #  Spaces:
 #    DXF     — unitless CAD, Y-up, origin bottom-left
@@ -283,6 +496,68 @@ class CoordTransform:
         px, py = self.dxf_to_png(dxf_x, dxf_y)
         return {"lat": round(-py, 4), "lng": round(px, 4)}
 
+    # ── Bbox transforms ────────────────────────────────────────────────
+
+    def dxf_bbox_to_svg(self, dxf_bbox: dict) -> dict:
+        """
+        Transform a DXF-space bbox (with corners) to SVG viewBox space.
+        Returns the axis-aligned envelope of the projected corners.
+        """
+        svg_corners = [self.dxf_to_svg(c[0], c[1]) for c in dxf_bbox["corners"]]
+        xs = [c[0] for c in svg_corners]
+        ys = [c[1] for c in svg_corners]
+        x0, y0 = min(xs), min(ys)
+        return {
+            "x":       round(x0, 4),
+            "y":       round(y0, 4),
+            "width":   round(max(xs) - x0, 4),
+            "height":  round(max(ys) - y0, 4),
+            "cx":      round((min(xs) + max(xs)) / 2, 4),
+            "cy":      round((min(ys) + max(ys)) / 2, 4),
+            "corners": [[round(c[0], 4), round(c[1], 4)] for c in svg_corners],
+        }
+
+    def dxf_bbox_to_png(self, dxf_bbox: dict) -> dict | None:
+        """Transform bbox corners to PNG pixel space."""
+        if not self.has_png:
+            return None
+        png_corners = [self.dxf_to_png(c[0], c[1]) for c in dxf_bbox["corners"]]
+        xs = [c[0] for c in png_corners]
+        ys = [c[1] for c in png_corners]
+        x0, y0 = min(xs), min(ys)
+        return {
+            "x":       round(x0, 4),
+            "y":       round(y0, 4),
+            "width":   round(max(xs) - x0, 4),
+            "height":  round(max(ys) - y0, 4),
+            "cx":      round((min(xs) + max(xs)) / 2, 4),
+            "cy":      round((min(ys) + max(ys)) / 2, 4),
+            "corners": [[round(c[0], 4), round(c[1], 4)] for c in png_corners],
+        }
+
+    def dxf_bbox_to_leaflet(self, dxf_bbox: dict) -> dict | None:
+        """Transform bbox corners to Leaflet {lat,lng} pairs."""
+        if not self.has_png:
+            return None
+        leaflet_corners = []
+        for c in dxf_bbox["corners"]:
+            lf = self.dxf_to_leaflet(c[0], c[1])
+            leaflet_corners.append(lf)
+        lats = [c["lat"] for c in leaflet_corners]
+        lngs = [c["lng"] for c in leaflet_corners]
+        return {
+            # Leaflet L.rectangle / L.polygon friendly
+            "bounds": [
+                [min(lats), min(lngs)],
+                [max(lats), max(lngs)],
+            ],
+            "corners": leaflet_corners,
+            "center": {
+                "lat": round((min(lats) + max(lats)) / 2, 4),
+                "lng": round((min(lngs) + max(lngs)) / 2, 4),
+            },
+        }
+
     def leaflet_bounds(self) -> list | None:
         if not self.has_png:
             return None
@@ -302,7 +577,7 @@ class CoordTransform:
 
 
 # ──────────────────────────────────────────────
-# 4.  MATCHING
+# 5.  MATCHING
 # ──────────────────────────────────────────────
 
 def build_dxf_index(entities: list[dict]) -> dict[str, list[dict]]:
@@ -378,19 +653,34 @@ def _build_entry(key, dxf_match, svg_matches, is_duplicate,
     svg_primary = svg_matches[0] if svg_matches else None
     dxf_x, dxf_y = dxf_match["insert"]
 
+    # ── Tight DXF-space hitbox ─────────────────────────────────────────
+    dxf_bbox = compute_dxf_bbox(dxf_match)
+
     # ── Coordinate transforms ──────────────────────────────────────────
     coords = None
     if transform is not None:
         svg_xy  = transform.dxf_to_svg(dxf_x, dxf_y)
-        leaflet = transform.dxf_to_leaflet(dxf_x, dxf_y)  # None if no PNG
+        leaflet = transform.dxf_to_leaflet(dxf_x, dxf_y)   # None if no PNG
         coords  = {
-            "dxf":     {"x": dxf_x,     "y": dxf_y},
-            "svg":     {"x": svg_xy[0],  "y": svg_xy[1]},
+            "dxf":     {"x": dxf_x,    "y": dxf_y},
+            "svg":     {"x": svg_xy[0], "y": svg_xy[1]},
             "leaflet": leaflet,
         }
         if transform.has_png:
-            png_xy          = transform.dxf_to_png(dxf_x, dxf_y)
-            coords["png"]   = {"x": png_xy[0], "y": png_xy[1]}
+            png_xy        = transform.dxf_to_png(dxf_x, dxf_y)
+            coords["png"] = {"x": png_xy[0], "y": png_xy[1]}
+
+        # ── Bbox in every coordinate space ────────────────────────────
+        if dxf_bbox is not None:
+            coords["bbox"] = {
+                "dxf": dxf_bbox,
+                "svg": transform.dxf_bbox_to_svg(dxf_bbox),
+            }
+            if transform.has_png:
+                coords["bbox"]["png"]     = transform.dxf_bbox_to_png(dxf_bbox)
+                coords["bbox"]["leaflet"] = transform.dxf_bbox_to_leaflet(dxf_bbox)
+        else:
+            coords["bbox"] = None
 
     entry = {
         "text":        key,
@@ -398,15 +688,16 @@ def _build_entry(key, dxf_match, svg_matches, is_duplicate,
         "duplicate":   is_duplicate,
         "fuzzy_match": fuzzy_match,
         "dxf": {
-            "handle":   dxf_match["handle"],
-            "type":     dxf_match["type"],
-            "insert":   dxf_match["insert"],
-            "rotation": dxf_match["rotation"],
-            "height":   dxf_match["height"],
-            "layer":    dxf_match["layer"],
-            "style":    dxf_match["style"],
-            "halign":   dxf_match["halign"],
-            "valign":   dxf_match["valign"],
+            "handle":       dxf_match["handle"],
+            "type":         dxf_match["type"],
+            "insert":       dxf_match["insert"],
+            "rotation":     dxf_match["rotation"],
+            "height":       dxf_match["height"],
+            "layer":        dxf_match["layer"],
+            "style":        dxf_match["style"],
+            "halign":       dxf_match["halign"],
+            "valign":       dxf_match["valign"],
+            "width_factor": dxf_match.get("width_factor", 1.0),
         },
         "svg": {
             "element_index": svg_primary["element_index"],
@@ -427,7 +718,7 @@ def _build_entry(key, dxf_match, svg_matches, is_duplicate,
 
 
 # ──────────────────────────────────────────────
-# 5.  HITBOXES  (flat Leaflet-ready list)
+# 6.  HITBOXES  (flat Leaflet-ready list)
 # ──────────────────────────────────────────────
 
 def build_hitboxes(labels: dict) -> list[dict]:
@@ -437,12 +728,14 @@ def build_hitboxes(labels: dict) -> list[dict]:
         if not entry["found"] or entry["coords"] is None:
             continue
         leaflet = entry["coords"].get("leaflet")
+        bbox    = entry["coords"].get("bbox")
         hitboxes.append({
             "label":   entry["text"],
             "found":   True,
             "dxf":     entry["coords"]["dxf"],
             "svg":     entry["coords"]["svg"],
             "leaflet": leaflet,   # None until PNG dims are added to transform.json
+            "bbox":    bbox,      # {dxf, svg, png?, leaflet?} tight bounding boxes
             "meta": {
                 "layer":       entry["dxf"]["layer"],
                 "type":        entry["dxf"]["type"],
@@ -455,14 +748,18 @@ def build_hitboxes(labels: dict) -> list[dict]:
 
 
 # ──────────────────────────────────────────────
-# 6.  DEBUG SVG
+# 7.  DEBUG SVG
 # ──────────────────────────────────────────────
 
 def write_debug_svg(svg_path: str, labels: dict, output_path: str,
                     transform: CoordTransform) -> None:
     """
-    Inject red dots at each label's SVG viewBox coordinates.
-    Open in a browser — dots should sit on the matching text entities.
+    Inject tight hitbox rectangles (and a centre dot) at each label's
+    SVG viewBox coordinates.  Open in a browser — boxes should closely
+    wrap the matching text entities.
+
+    For rotated text the box is rendered as a <polygon> using the four
+    projected corners so it stays aligned with the actual glyph run.
     Uses SVG coords so no PNG required.
     """
     import xml.etree.ElementTree as ET
@@ -473,40 +770,64 @@ def write_debug_svg(svg_path: str, labels: dict, output_path: str,
 
     vb_w = transform.svg["viewbox_w"]
     vb_h = transform.svg["viewbox_h"]
-    dot_r      = round(vb_w * 0.003, 2)
-    font_size  = round(vb_h * 0.012, 2)
-    label_dx   = round(vb_w * 0.004, 4)
+
+    # Scale visual decorations to drawing size
+    stroke_w   = round(vb_w * 0.0008, 3)   # very thin outline
+    dot_r      = round(vb_w * 0.0015, 3)   # tiny centre dot
+    colour     = "#00cc44"                  # green for all hitboxes
+
+    # Semi-transparent overlay group so boxes don't obscure existing text
+    grp = ET.SubElement(root, f"{{{ns}}}g")
+    grp.set("id",      "debug-hitboxes")
+    grp.set("opacity", "1")
 
     for key, entry in labels.items():
         if not entry["found"] or entry["coords"] is None:
             continue
 
-        sx = entry["coords"]["svg"]["x"]
-        sy = entry["coords"]["svg"]["y"]
+        bbox_info = entry["coords"].get("bbox")
 
-        dot = ET.SubElement(root, f"{{{ns}}}circle")
-        dot.set("cx",           str(sx))
-        dot.set("cy",           str(sy))
-        dot.set("r",            str(dot_r))
-        dot.set("fill",         "red")
-        dot.set("opacity",      "0.8")
-        dot.set("stroke",       "white")
-        dot.set("stroke-width", str(round(dot_r * 0.2, 2)))
+        # ── Draw hitbox ────────────────────────────────────────────────
+        if bbox_info and bbox_info.get("svg") and bbox_info["svg"].get("corners"):
+            svg_bb   = bbox_info["svg"]
+            corners  = svg_bb["corners"]   # 4 × [x, y] in SVG space
+            pts_str  = " ".join(f"{c[0]},{c[1]}" for c in corners)
 
-        lbl = ET.SubElement(root, f"{{{ns}}}text")
-        lbl.set("x",         str(round(sx + label_dx, 4)))
-        lbl.set("y",         str(round(sy + label_dx, 4)))
-        lbl.set("font-size", str(font_size))
-        lbl.set("fill",      "red")
-        lbl.text = key
+            poly = ET.SubElement(grp, f"{{{ns}}}polygon")
+            poly.set("points",        pts_str)
+            poly.set("fill",          "none")
+            poly.set("stroke",        colour)
+            poly.set("stroke-width",  str(stroke_w))
+
+            cx, cy = svg_bb["cx"], svg_bb["cy"]
+        else:
+            # No bbox available — fall back to a small square at the insert point
+            sx = entry["coords"]["svg"]["x"]
+            sy = entry["coords"]["svg"]["y"]
+            cx, cy = sx, sy
+
+            rect = ET.SubElement(grp, f"{{{ns}}}rect")
+            rect.set("x",            str(round(sx - dot_r * 3, 4)))
+            rect.set("y",            str(round(sy - dot_r * 3, 4)))
+            rect.set("width",        str(round(dot_r * 6, 4)))
+            rect.set("height",       str(round(dot_r * 6, 4)))
+            rect.set("fill",         "none")
+            rect.set("stroke",       colour)
+            rect.set("stroke-width", str(stroke_w))
+
+        dot = ET.SubElement(grp, f"{{{ns}}}circle")
+        dot.set("cx",    str(cx))
+        dot.set("cy",    str(cy))
+        dot.set("r",     str(dot_r))
+        dot.set("fill",  colour)
 
     tree.write(output_path, xml_declaration=True, encoding="unicode")
     print(f"Debug SVG written: {output_path}")
-    print("  → Open in browser — red dots should sit on matching text entities.")
+    print("  → Open in browser — green boxes should tightly wrap text entities.")
 
 
 # ──────────────────────────────────────────────
-# 7.  MANIFEST ASSEMBLY
+# 8.  MANIFEST ASSEMBLY
 # ──────────────────────────────────────────────
 
 def build_manifest(
@@ -543,11 +864,13 @@ def build_manifest(
     has_coords = sum(1 for v in labels.values() if v.get("coords") is not None)
     has_leaflet= sum(1 for v in labels.values()
                      if v.get("coords") and v["coords"].get("leaflet"))
+    has_bbox   = sum(1 for v in labels.values()
+                     if v.get("coords") and v["coords"].get("bbox"))
 
     hitboxes = build_hitboxes(labels)
 
     manifest = {
-        "version":        "1.2",
+        "version":        "1.3",
         "source_dxf":     os.path.basename(dxf_path),
         "source_svg":     os.path.basename(svg_path) if svg_path else None,
         "generated_at":   datetime.now(timezone.utc).isoformat(),
@@ -563,12 +886,13 @@ def build_manifest(
             "fuzzy_matches":     fuzzy,
             "with_coords":       has_coords,
             "with_leaflet":      has_leaflet,
+            "with_bbox":         has_bbox,
         },
     }
 
     print(f"[4/4] Done.")
     print(f"      found={found}  not_found={not_found}  duplicates={duplicates}"
-          f"  fuzzy={fuzzy}  coords={has_coords}  leaflet={has_leaflet}")
+          f"  fuzzy={fuzzy}  coords={has_coords}  leaflet={has_leaflet}  bbox={has_bbox}")
 
     if has_leaflet == 0 and transform and not transform.has_png:
         print()
@@ -579,7 +903,7 @@ def build_manifest(
 
 
 # ──────────────────────────────────────────────
-# 8.  CLI
+# 9.  CLI
 # ──────────────────────────────────────────────
 
 def parse_args():
@@ -600,7 +924,7 @@ def parse_args():
                    default=["TAGS", "EQUIP", "ANNO", "TEXT"],
                    metavar="LAYER")
     p.add_argument("--debug-svg", default=None, metavar="PATH",
-                   help="Write debug SVG with red dots at label SVG positions")
+                   help="Write debug SVG with tight hitbox rectangles at label positions")
     p.add_argument("--verbose",   action="store_true")
     return p.parse_args()
 
