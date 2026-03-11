@@ -594,6 +594,141 @@ def build_svg_index(svg_entities: list[dict]) -> dict[str, list[dict]]:
     return dict(index)
 
 
+# ──────────────────────────────────────────────
+# 5b.  SPATIAL CLUSTERING
+#
+#  Groups nearby TEXT/MTEXT entities into candidate multi-part labels.
+#  Two entities are neighbours when the centre-to-centre distance is
+#  within `gap_factor × max(h_a, h_b)`.  Clusters are then sorted into
+#  reading order (top→bottom, left→right) and their texts joined as:
+#    • no separator   → "TCV901"
+#    • space          → "TCV 901"
+#  Both variants are indexed so match_labels can find either form.
+# ──────────────────────────────────────────────
+
+_DEFAULT_CLUSTER_GAP = 3.5   # × cap-height
+
+
+def _entity_centre(e: dict) -> tuple[float, float]:
+    """Approximate visual centre of a text entity."""
+    bb = compute_dxf_bbox(e)
+    if bb:
+        return bb["cx"], bb["cy"]
+    x, y = e["insert"]
+    return x, y
+
+
+def build_clusters(entities: list[dict],
+                   gap_factor: float = _DEFAULT_CLUSTER_GAP) -> list[list[dict]]:
+    """
+    Single-linkage spatial clustering of text entities.
+    Returns a list of clusters; each cluster is a list of entities
+    sorted in reading order (descending Y first, then ascending X —
+    DXF is Y-up so higher Y = higher on page).
+    Only clusters with ≥2 members are returned.
+    """
+    n = len(entities)
+    if n == 0:
+        return []
+
+    centres = [_entity_centre(e) for e in entities]
+
+    # Union-find
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(i, j):
+        pi, pj = find(i), find(j)
+        if pi != pj:
+            parent[pi] = pj
+
+    for i in range(n):
+        hi = entities[i].get("height", 0.0) or 0.0
+        for j in range(i + 1, n):
+            hj = entities[j].get("height", 0.0) or 0.0
+            threshold = gap_factor * max(hi, hj, 0.001)
+            cx1, cy1 = centres[i]
+            cx2, cy2 = centres[j]
+            dist = math.hypot(cx2 - cx1, cy2 - cy1)
+            if dist <= threshold:
+                union(i, j)
+
+    groups: dict[int, list[int]] = defaultdict(list)
+    for i in range(n):
+        groups[find(i)].append(i)
+
+    clusters = []
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        # Reading order: high Y first (top of page), then left→right
+        sorted_members = sorted(
+            members,
+            key=lambda i: (-round(centres[i][1], 2), centres[i][0])
+        )
+        clusters.append([entities[i] for i in sorted_members])
+
+    return clusters
+
+
+def merge_dxf_bboxes(bboxes: list[dict]) -> dict:
+    """
+    Return the axis-aligned union of multiple DXF bboxes.
+    Also synthesises a `corners` list (the four envelope corners)
+    so transform functions work unchanged.
+    """
+    all_corners = [c for bb in bboxes for c in bb["corners"]]
+    xs = [c[0] for c in all_corners]
+    ys = [c[1] for c in all_corners]
+    x0, y0 = min(xs), min(ys)
+    x1, y1 = max(xs), max(ys)
+    return {
+        "x":        round(x0, 4),
+        "y":        round(y0, 4),
+        "width":    round(x1 - x0, 4),
+        "height":   round(y1 - y0, 4),
+        "cx":       round((x0 + x1) / 2, 4),
+        "cy":       round((y0 + y1) / 2, 4),
+        "rotation": 0.0,
+        "corners": [
+            [round(x0, 4), round(y0, 4)],
+            [round(x1, 4), round(y0, 4)],
+            [round(x1, 4), round(y1, 4)],
+            [round(x0, 4), round(y1, 4)],
+        ],
+    }
+
+
+def build_cluster_index(entities: list[dict],
+                        gap_factor: float = _DEFAULT_CLUSTER_GAP
+                        ) -> dict[str, list[list[dict]]]:
+    """
+    Build a lookup: joined_text → [cluster, cluster, ...]
+    Tries both no-separator and space-separator joins.
+    Also tries case-insensitive variants (stored under the upper-case key).
+    """
+    clusters = build_clusters(entities, gap_factor)
+    index: dict[str, list[list[dict]]] = defaultdict(list)
+
+    for cluster in clusters:
+        parts = [e["text"].strip() for e in cluster]
+        variants = {
+            "".join(parts),          # TCV901
+            " ".join(parts),         # TCV 901
+        }
+        for v in variants:
+            if v:
+                index[v].append(cluster)
+                index[v.upper()].append(cluster)   # case-insensitive key
+
+    return dict(index)
+
+
 def pick_best_dxf_match(matches, layer_priority) -> tuple[dict, bool]:
     is_dup = len(matches) > 1
     if not is_dup:
@@ -609,6 +744,7 @@ def match_labels(
     target_labels:  list[str],
     dxf_index:      dict,
     svg_index:      dict,
+    cluster_index:  dict,
     layer_priority: list[str],
     transform:      CoordTransform | None,
 ) -> dict:
@@ -619,7 +755,14 @@ def match_labels(
         svg_matches = svg_index.get(key, [])
 
         if not dxf_matches:
-            # Case-insensitive fuzzy fallback
+            # ── Try cluster match (multi-part label) ───────────────────
+            cluster_hits = cluster_index.get(key) or cluster_index.get(key.upper())
+            if cluster_hits:
+                cluster = cluster_hits[0]   # take first cluster
+                labels[key] = _build_cluster_entry(key, cluster, transform)
+                continue
+
+            # ── Case-insensitive single-entity fallback ────────────────
             ci_key     = key.upper()
             ci_matches = [
                 e for k, elist in dxf_index.items()
@@ -717,6 +860,87 @@ def _build_entry(key, dxf_match, svg_matches, is_duplicate,
     return entry
 
 
+def _build_cluster_entry(key: str, cluster: list[dict],
+                          transform: CoordTransform | None) -> dict:
+    """
+    Build a manifest entry for a label that spans multiple DXF entities.
+    The bbox is the union of all member bboxes; the insert point is the
+    centre of that union.
+    """
+    # Individual bboxes
+    member_bboxes = [compute_dxf_bbox(e) for e in cluster]
+    valid_bboxes  = [bb for bb in member_bboxes if bb is not None]
+
+    merged_dxf_bbox = merge_dxf_bboxes(valid_bboxes) if valid_bboxes else None
+
+    # Representative insert = centre of merged bbox (or first entity insert)
+    if merged_dxf_bbox:
+        rep_x, rep_y = merged_dxf_bbox["cx"], merged_dxf_bbox["cy"]
+    else:
+        rep_x, rep_y = cluster[0]["insert"]
+
+    coords = None
+    if transform is not None:
+        svg_xy  = transform.dxf_to_svg(rep_x, rep_y)
+        leaflet = transform.dxf_to_leaflet(rep_x, rep_y)
+        coords  = {
+            "dxf":     {"x": rep_x, "y": rep_y},
+            "svg":     {"x": svg_xy[0], "y": svg_xy[1]},
+            "leaflet": leaflet,
+        }
+        if transform.has_png:
+            png_xy        = transform.dxf_to_png(rep_x, rep_y)
+            coords["png"] = {"x": png_xy[0], "y": png_xy[1]}
+
+        if merged_dxf_bbox is not None:
+            coords["bbox"] = {
+                "dxf": merged_dxf_bbox,
+                "svg": transform.dxf_bbox_to_svg(merged_dxf_bbox),
+            }
+            if transform.has_png:
+                coords["bbox"]["png"]     = transform.dxf_bbox_to_png(merged_dxf_bbox)
+                coords["bbox"]["leaflet"] = transform.dxf_bbox_to_leaflet(merged_dxf_bbox)
+        else:
+            coords["bbox"] = None
+
+    return {
+        "text":        key,
+        "found":       True,
+        "duplicate":   False,
+        "fuzzy_match": False,
+        "clustered":   True,
+        "cluster_parts": [e["text"] for e in cluster],
+        # Primary dxf block uses the first (top) entity
+        "dxf": {
+            "handle":       cluster[0]["handle"],
+            "type":         cluster[0]["type"],
+            "insert":       cluster[0]["insert"],
+            "rotation":     cluster[0]["rotation"],
+            "height":       cluster[0]["height"],
+            "layer":        cluster[0]["layer"],
+            "style":        cluster[0]["style"],
+            "halign":       cluster[0]["halign"],
+            "valign":       cluster[0]["valign"],
+            "width_factor": cluster[0].get("width_factor", 1.0),
+        },
+        "cluster_members": [
+            {
+                "handle": e["handle"],
+                "text":   e["text"],
+                "insert": e["insert"],
+                "layer":  e["layer"],
+                "height": e["height"],
+                "bbox":   bb,
+            }
+            for e, bb in zip(cluster, member_bboxes)
+        ],
+        "svg":            None,
+        "coords":         coords,
+        "all_dxf_matches": [],
+        "meta":           {},
+    }
+
+
 # ──────────────────────────────────────────────
 # 6.  HITBOXES  (flat Leaflet-ready list)
 # ──────────────────────────────────────────────
@@ -742,6 +966,8 @@ def build_hitboxes(labels: dict) -> list[dict]:
                 "handle":      entry["dxf"]["handle"],
                 "duplicate":   entry["duplicate"],
                 "fuzzy_match": entry["fuzzy_match"],
+                "clustered":   entry.get("clustered", False),
+                "cluster_parts": entry.get("cluster_parts", []),
             },
         })
     return hitboxes
@@ -836,6 +1062,7 @@ def build_manifest(
     target_labels:  list[str],
     layer_priority: list[str],
     transform:      CoordTransform | None,
+    cluster_gap:    float = _DEFAULT_CLUSTER_GAP,
 ) -> dict:
     print(f"[1/4] Reading DXF: {dxf_path}")
     dxf_entities = extract_dxf_text_entities(dxf_path)
@@ -852,15 +1079,18 @@ def build_manifest(
         print("[2/4] No SVG provided — skipping SVG text extraction")
 
     print(f"[3/4] Matching {len(target_labels)} labels...")
-    dxf_index = build_dxf_index(dxf_entities)
-    svg_index = build_svg_index(svg_entities)
-    labels    = match_labels(target_labels, dxf_index, svg_index,
-                             layer_priority, transform)
+    dxf_index     = build_dxf_index(dxf_entities)
+    svg_index     = build_svg_index(svg_entities)
+    cluster_index = build_cluster_index(dxf_entities, gap_factor=cluster_gap)
+    print(f"      → {len(cluster_index)} cluster variants indexed  (gap={cluster_gap}×h)")
+    labels        = match_labels(target_labels, dxf_index, svg_index,
+                                 cluster_index, layer_priority, transform)
 
     found      = sum(1 for v in labels.values() if v["found"])
     not_found  = sum(1 for v in labels.values() if not v["found"])
     duplicates = sum(1 for v in labels.values() if v["duplicate"])
     fuzzy      = sum(1 for v in labels.values() if v.get("fuzzy_match"))
+    clustered  = sum(1 for v in labels.values() if v.get("clustered"))
     has_coords = sum(1 for v in labels.values() if v.get("coords") is not None)
     has_leaflet= sum(1 for v in labels.values()
                      if v.get("coords") and v["coords"].get("leaflet"))
@@ -884,6 +1114,7 @@ def build_manifest(
             "not_found":         not_found,
             "duplicate_matches": duplicates,
             "fuzzy_matches":     fuzzy,
+            "clustered_matches": clustered,
             "with_coords":       has_coords,
             "with_leaflet":      has_leaflet,
             "with_bbox":         has_bbox,
@@ -892,7 +1123,8 @@ def build_manifest(
 
     print(f"[4/4] Done.")
     print(f"      found={found}  not_found={not_found}  duplicates={duplicates}"
-          f"  fuzzy={fuzzy}  coords={has_coords}  leaflet={has_leaflet}  bbox={has_bbox}")
+          f"  fuzzy={fuzzy}  clustered={clustered}  coords={has_coords}"
+          f"  leaflet={has_leaflet}  bbox={has_bbox}")
 
     if has_leaflet == 0 and transform and not transform.has_png:
         print()
@@ -925,6 +1157,10 @@ def parse_args():
                    metavar="LAYER")
     p.add_argument("--debug-svg", default=None, metavar="PATH",
                    help="Write debug SVG with tight hitbox rectangles at label positions")
+    p.add_argument("--cluster-gap", type=float, default=_DEFAULT_CLUSTER_GAP,
+                   metavar="N",
+                   help=f"Proximity threshold for multi-part label clustering "
+                        f"(× cap-height, default {_DEFAULT_CLUSTER_GAP})")
     p.add_argument("--verbose",   action="store_true")
     return p.parse_args()
 
@@ -969,6 +1205,7 @@ def main():
         target_labels=unique,
         layer_priority=args.layer_priority,
         transform=transform,
+        cluster_gap=args.cluster_gap,
     )
 
     # Write manifest
