@@ -1283,7 +1283,12 @@ def parse_args():
     )
     p.add_argument("--dxf",       required=True, help="Path to .dxf file")
     p.add_argument("--svg",       default=None,  help="Path to .svg file (from render_svg.py)")
-    p.add_argument("--transform", default=None,  help="Path to transform.json (from render_svg.py)")
+    p.add_argument("--transform", default=None,  help="Path to transform.json (from render_svg.py / rasterise_tiles.py)")
+    p.add_argument("--tile-meta", default=None,  metavar="FILE",
+                   help="Path to tile_meta.json (from rasterise_tiles.py). "
+                        "If provided, merges png/scale/leaflet_bounds into the "
+                        "transform so Leaflet hitbox coords are populated even "
+                        "if transform.json hasn't been updated yet.")
     p.add_argument("--out",       default="label-manifest.json")
 
     grp = p.add_mutually_exclusive_group(required=True)
@@ -1332,13 +1337,33 @@ def main():
     transform = None
     if args.transform:
         with open(args.transform, "r", encoding="utf-8") as f:
-            transform = CoordTransform(json.load(f))
+            transform_dict = json.load(f)
+
+        # If --tile-meta provided, merge png/scale/leaflet_bounds from it.
+        # This handles the case where transform.json was written before
+        # rasterise_tiles.py ran (or where tiles were generated separately).
+        if args.tile_meta:
+            with open(args.tile_meta, "r", encoding="utf-8") as f:
+                tm = json.load(f)
+            w = tm["full_width_px"]
+            h = tm["full_height_px"]
+            if "png" not in transform_dict or transform_dict.get("scale_x") is None:
+                transform_dict["png"]            = {"width_px": w, "height_px": h}
+                transform_dict["scale_x"]        = tm["px_per_dxf_unit"]
+                transform_dict["scale_y"]        = h / transform_dict["dxf"]["height"]
+                transform_dict["leaflet_bounds"] = tm["leaflet_bounds"]
+                print(f"Tile meta merged: {args.tile_meta}  "
+                      f"({w}×{h}px  scale_x={transform_dict['scale_x']:.4f})")
+            else:
+                print(f"Tile meta skipped: transform.json already has png block")
+
+        transform = CoordTransform(transform_dict)
         print(f"Transform loaded: {args.transform}")
         if transform.has_png:
             print(f"  PNG: {transform.png_w}px × {transform.png_h}px  "
                   f"scale_x={transform.scale_x:.4f} scale_y={transform.scale_y:.4f}")
         else:
-            print("  PNG dims not present — Leaflet coords will be null")
+            print("  PNG dims not present — run rasterise_tiles.py first for Leaflet coords")
     else:
         print("No --transform provided — coords will be null")
 

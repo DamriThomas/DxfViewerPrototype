@@ -1,6 +1,14 @@
 # render_svg.py
 # Renders a DXF to SVG and writes transform.json.
-# PNG generation is handled separately by your preferred tool.
+#
+# Typical pipeline:
+#   1. python render_svg.py    input.dxf                → drawing.svg + transform.json
+#   2. python rasterise_tiles.py --svg drawing.svg \    → tiles/ + tile_meta.json
+#                                --transform transform.json      (updates transform.json)
+#   3. python extract_manifest.py --dxf input.dxf \    → label-manifest.json
+#                                  --labels labels.txt \
+#                                  --svg drawing.svg \
+#                                  --transform transform.json
 #
 # Usage:
 #   python render_svg.py input.dxf [output.svg] [--text-to-path]
@@ -14,7 +22,8 @@
 #
 # Outputs:
 #   output.svg      -- vector SVG via ezdxf SVGBackend
-#   transform.json  -- coordinate transform manifest for extract_manifest.py
+#   transform.json  -- coordinate transform manifest (consumed by rasterise_tiles.py
+#                      and extract_manifest.py)
 
 import argparse
 import json
@@ -150,11 +159,13 @@ with open(args.transform_out, "w", encoding="utf-8") as f:
 print(f"Transform    : {args.transform_out}")
 
 print()
-print("Next steps:")
-print("  1. Convert SVG to high-res PNG using your preferred tool")
-print("  2. Add to transform.json:")
-print('       "png": { "width_px": <w>, "height_px": <h>, "dpi": <dpi> }')
-print('       "scale_x": <png_w / dxf_w>')
-print('       "scale_y": <png_h / dxf_h>')
-print('       "leaflet_bounds": [[-png_h, 0], [0, png_w]]')
-print("  3. python extract_manifest.py --dxf ... --labels ... --transform transform.json")
+print("── Next step ─────────────────────────────────────────────────────────")
+print(f"  python rasterise_tiles.py \\")
+print(f"    --svg {svg_path} \\")
+print(f"    --transform {args.transform_out}")
+print()
+print("  rasterise_tiles.py will:")
+print("    • rasterise the SVG to a high-res PNG tile pyramid (tiles/)")
+print("    • write tile_meta.json for DXFViewer")
+print(f"    • update {args.transform_out} with png + scale + leaflet_bounds")
+print("      (so extract_manifest.py gains Leaflet hitbox coords automatically)")
